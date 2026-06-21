@@ -95,7 +95,7 @@ srp/modified/
 
 ## Principio Aplicado
 
-> Una clase debe tener una única razón para cambiar. - Robert C. Martin
+> Una clase debe tener una única razón para cambiar.
 
 Cada clase del código refactorizado tiene una única responsabilidad:
 - `EmailValidator` -> Solo valida emails
@@ -104,3 +104,117 @@ Cada clase del código refactorizado tiene una única responsabilidad:
 - `EmailSender` -> Solo envía emails
 - `UserValidator` -> Solo valida usuarios
 - `UserController` -> Solo orquesta el proceso de registro
+
+---
+
+# Refactorización Open/Closed Principle (OCP)
+
+## Problema Original
+
+El código original en `ocp/original/NotificationService.java` violaba el principio OCP al utilizar condicionales para determinar el tipo de notificación a enviar:
+
+```java
+public void sendNotification(String type, String message) {
+  if (type.equals("Email")) {
+    System.out.println("Sending Email: " + message);
+  } else if (type.equals("SMS")) {
+    System.out.println("Sending SMS: " + message);
+  } else if (type.equals("Push")) {
+    System.out.println("Sending Push Notification: " + message);
+  } else {
+    System.out.println("Invalid notification type!");
+  }
+}
+```
+
+**Problema:** Cada vez que se necesitaba agregar un nuevo tipo de notificación (Fax, WhatsApp, etc.), era necesario modificar este método, violando el principio de abierto para extensión, cerrado para modificación.
+
+## Estructura Refactorizada
+
+```
+ocp/modified/
+  Main.java
+  NotificationProcessor.java  # Procesa notificaciones usando la interfaz
+  NotificationService.java    # Interfaz que define el contrato
+  notificationServices/
+    EmailService.java          # Implementación para Email
+    SmsService.java           # Implementación para SMS
+    PushService.java          # Implementación para Push
+    FaxService.java           # Implementación para Fax
+    WhatsappService.java      # Implementación para WhatsApp
+```
+
+## Cambios Realizados
+
+### 1. Creación de la Interfaz NotificationService
+
+**Antes:** Un único método con lógica condicional para todos los tipos.
+
+**Después:** Una interfaz simple que define el contrato:
+
+```java
+public interface NotificationService {
+  void sendNotification(String message);
+}
+```
+
+**Mejora:** Cualquier nuevo tipo de notificación solo necesita implementar esta interfaz.
+
+### 2. Extracción de Notificaciones a Clases Concretas
+
+**Antes:** `EmailService`, `SmsService`, etc. no existían.
+
+**Después:** Cada tipo de notificación tiene su propia clase:
+
+```java
+public class EmailService implements NotificationService {
+  public void sendNotification(String message) {
+    System.out.println("Sending Email: " + message);
+  }
+}
+```
+
+**Mejora:** Cada clase tiene una única responsabilidad. Agregar un nuevo tipo no requiere modificar las existentes.
+
+### 3. Introducción de NotificationProcessor
+
+**Antes:** La selección del tipo de notificación se hacía mediante strings ("Email", "SMS").
+
+**Después:** `NotificationProcessor` recibe cualquier implementación de `NotificationService`:
+
+```java
+public class NotificationProcessor {
+  public void processNotification(NotificationService notificationService, String message) {
+    notificationService.sendNotification(message);
+  }
+}
+```
+
+**Mejora:**
+- Elimina el acoplamiento a tipos específicos
+- Permite agregar nuevos tipos sin modificar este procesador
+- Facilita las pruebas con mocks
+
+### 4. Polimorfismo en Lugar de Condicionales
+
+**Antes:**
+```java
+service.sendNotification("Email", "Hello!");
+service.sendNotification("SMS", "Hello!");
+```
+
+**Después:**
+```java
+notificationProcessor.processNotification(new EmailService(), "Hello!");
+notificationProcessor.processNotification(new SmsService(), "Hello!");
+```
+
+**Mejora:** La selección del tipo ocurre en tiempo de compilación (o mediante configuración), no en runtime con condicionales.
+
+## Principio Aplicado
+
+> Las entidades de software deben estar abiertas para extensión pero cerradas para modificación.
+
+La refactorización cumple con OCP porque:
+- **Abierto para extensión:** Para agregar `TelegramService` o `SlackService`, solo se crea una nueva clase que implemente `NotificationService`
+- **Cerrado para modificación:** No es necesario modificar `NotificationProcessor` ni `NotificationService` para agregar nuevos tipos
