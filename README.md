@@ -1,3 +1,19 @@
+# Aplicación de Principios SOLID
+
+Los principios SOLID son un conjunto de cinco principios de diseño orientado a objetos que ayudan a crear software más mantenible, flexible y extensible. Cada principio aborda un aspecto específico de la calidad del código:
+
+- **S**ingle Responsibility Principle (SRP): Cada clase debe tener una única razón para cambiar.
+- **O**pen/Closed Principle (OCP): Las entidades de software deben estar abiertas para extensión pero cerradas para modificación.
+- **L**iskov Substitution Principle (LSP): Los objetos de una superclase deben poder ser substituidos por objetos de sus subclases sin afectar el comportamiento del programa.
+- **I**nterface Segregation Principle (ISP): Los clientes no deben verse forzados a depender de interfaces que no utilizan.
+- **D**ependency Inversion Principle (DIP): Las entidades de software deben depender de abstracciones, no de concreciones.
+
+Estos principios fueron popularizados por Robert C. Martin (Uncle Bob) y son fundamentales para escribir código de calidad en aplicaciones orientadas a objetos.
+
+> **Nota:** Este README fue generado con ayuda de IA, pero toda la refactorización del código fue completamente realizada por los estudiantes.
+
+---
+
 # Refactorización Single Responsibility Principle (SRP)
 
 ## Problema Original
@@ -691,7 +707,3 @@ O un Factory simple:
 ```java
 PaymentProcessor processor = PaymentProcessorFactory.create("creditcard");
 ```
-
-### Consideración de Diseño
-
-La inyección de dependencias via constructor es correcta y demuestra el principio DIP. Sin embargo, en aplicaciones reales, el uso de un contenedor DI o framework (Spring, Guice, Dagger) facilita la gestión de dependencias en código a mayor escala.
