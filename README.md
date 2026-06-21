@@ -364,3 +364,157 @@ La existencia de `Animal dog = new Dog()` y `Animal fish = new Fish()` en `Main.
 ### Nota sobre la Decisión de Diseño
 
 Esta implementación demuestra el principio LSP correctamente: cualquier subclase de `Animal` puede substituir a `Animal` sin romper el programa. Sin embargo, en un diseño real, si muchos animales necesitan comportamientos específicos como `walk()`, podría considerarse si `Animal` es la abstracción correcta o si debería definirse desde el inicio como una interfaz más granular.
+
+---
+
+# Refactorización Interface Segregation Principle (ISP)
+
+## Problema Original
+
+El código original en `isp/original/` violaba el principio ISP al definir una interfaz `Device` con métodos que no todas las implementaciones necesitaban:
+
+```java
+interface Device {
+  void turnOn();
+  void turnOff();
+  void charge();
+}
+
+class DisposableCamera implements Device {
+  @Override
+  public void turnOn() { }
+  @Override
+  public void turnOff() { }
+  @Override
+  public void charge() {
+    throw new UnsupportedOperationException("Disposable cameras cannot be charged.");
+  }
+}
+```
+
+**Problema:** `DisposableCamera` se veía forzada a implementar `charge()` aunque su hardware no lo permitía, violando ISP. Esto resulta en métodos vacíos o que lanzan excepciones.
+
+## Estructura Refactorizada
+
+```
+isp/modified/
+  Main.java
+  Phone.java               # Implementa Device y Chargeable
+  DisposableCamera.java    # Solo implementa Device
+  interfaces/
+    Device.java            # Interfaz con solo turnOn/turnOff
+    Chargeable.java         # Interfaz separada para charge
+```
+
+## Cambios Realizados
+
+### 1. Separación de la Interfaz Device
+
+**Antes:** Una única interfaz `Device` con tres métodos.
+
+**Después:** Dos interfaces especializadas:
+- `Device` - solo `turnOn()` y `turnOff()`
+- `Chargeable` - solo `charge()`
+
+**Mejora:** Cada interfaz representa un comportamiento específico y cohesivo.
+
+### 2. Implementación de Chargeable en Phone
+
+**Antes:** `Phone` implementaba `Device` que incluía `charge()`.
+
+**Después:** `Phone` implementa ambas interfaces:
+
+```java
+public class Phone implements Device, Chargeable {
+  @Override
+  public void turnOn() { }
+  @Override
+  public void turnOff() { }
+  @Override
+  public void charge() {
+    System.out.println("Phone is charging.");
+  }
+}
+```
+
+**Mejora:** `Phone` declara explícitamente que puede cargarse.
+
+### 3. Simplificación de DisposableCamera
+
+**Antes:** `DisposableCamera` implementaba `Device` forzadamente y lanzaba excepción en `charge()`.
+
+**Después:** `DisposableCamera` solo implementa `Device`:
+
+```java
+class DisposableCamera implements Device {
+  @Override
+  public void turnOn() {
+    System.out.println("Disposable camera is turning on.");
+  }
+  @Override
+  public void turnOff() {
+    System.out.println("Disposable camera is turning off.");
+  }
+}
+```
+
+**Mejora:** Ya no necesita implementar métodos que no puede cumplir.
+
+### 4. Actualización de Main.java
+
+**Antes:**
+```java
+Device phone = new Phone();
+Device camera = new DisposableCamera();
+phone.charge(); // Funciona, pero no hay forma de saber en tiempo de compilación si un Device es chargeable
+camera.charge(); // Lanza UnsupportedOperationException en tiempo de ejecución
+```
+
+**Después:**
+```java
+Device phone = new Phone();
+Device camera = new DisposableCamera();
+phone.turnOn();
+((Chargeable) phone).charge();
+camera.turnOn();
+// camera.charge() no es accesible, el compilador lo impide
+```
+
+**Mejora:** El código que intenta cargar un dispositivo que no es `Chargeable` falla en tiempo de compilación, no en ejecución.
+
+## Principio Aplicado
+
+> Los clientes no deben verse forzados a depender de interfaces que no utilizan.
+
+La refactorización cumple con ISP porque:
+- **Interfaces granulares:** `Device` y `Chargeable` son interfaces pequeñas y enfocadas
+- **Sin Implementaciones Vacías:** `DisposableCamera` no implementa métodos que no necesita
+- **Type Safety:** El compilador previene errores de intentar cargar dispositivos no cargables
+
+## Puntos de Mejora Fuera del Principio
+
+### Cast en Main.java
+
+**Código actual:**
+```java
+((Chargeable) phone).charge();
+```
+
+**Problema:** El uso de cast indica que `phone` declarado como `Device` no expone el método `charge()`. Esto fuerza al programador a conocer el tipo concreto.
+
+**Mejora sugerida:** Si se necesita cargar dispositivos, considerar una función que recibe `Chargeable` directamente:
+```java
+private static void chargeDevice(Chargeable device) {
+    device.charge();
+}
+```
+
+O declarar la variable con el tipo más específico desde el inicio:
+```java
+Phone phone = new Phone();
+phone.charge();
+```
+
+### Consideración de Diseño
+
+La existencia de `((Chargeable) phone).charge()` en `Main.java` demuestra que a veces se necesita trabajar con interfaces específicas. Si el código requiere frecuentemente cargar dispositivos, podría tener sentido que `Chargeable` sea la interfaz principal y `Device` solo un extra. Sin embargo, el diseño actual es válido para ISP y demuestra correctamente el principio.
