@@ -218,3 +218,149 @@ notificationProcessor.processNotification(new SmsService(), "Hello!");
 La refactorización cumple con OCP porque:
 - **Abierto para extensión:** Para agregar `TelegramService` o `SlackService`, solo se crea una nueva clase que implemente `NotificationService`
 - **Cerrado para modificación:** No es necesario modificar `NotificationProcessor` ni `NotificationService` para agregar nuevos tipos
+
+---
+
+# Refactorización Liskov Substitution Principle (LSP)
+
+## Problema Original
+
+El código original en `lsp/original/` violaba el principio LSP al definir comportamiento en la clase base `Animal` que no todas las subclases pueden cumplir:
+
+```java
+public class Animal {
+  public void makeSound() { }
+  public void walk() {
+    System.out.println("Animal is walking.");
+  }
+}
+
+public class Dog extends Animal {
+  @Override
+  public void makeSound() {
+    System.out.println("Dog barks.");
+  }
+}
+
+public class Fish extends Animal {
+  @Override
+  public void walk() {
+    throw new UnsupportedOperationException("Fish can't walk.");
+  }
+}
+```
+
+**Problema:** `Fish` es una subclase de `Animal`, pero no puede cumplir el contrato de `walk()` sin lanzar una excepción. Esto viola LSP porque un objeto `Animal` (que podría ser un `Fish`) no puede ser substituido por su subclase sin romper el comportamiento esperado.
+
+## Estructura Refactorizada
+
+```
+lsp/modified/
+  Main.java
+  Animal.java           # Clase base solo con comportamiento común
+  Dog.java              # Implementa IWalkingAnimal
+  Fish.java             # Solo extiende Animal (sin walk)
+  IWalkingAnimal.java   # Interfaz para comportamiento de caminar
+```
+
+## Cambios Realizados
+
+### 1. Extracción de la Interfaz IWalkingAnimal
+
+**Antes:** El método `walk()` estaba en la clase base `Animal`.
+
+**Después:** Se creó una interfaz `IWalkingAnimal` que solo define el comportamiento de caminar:
+
+```java
+public interface IWalkingAnimal {
+  public void walk();
+}
+```
+
+**Mejora:** Solo las clases que pueden caminar implementan esta interfaz. `Fish` ya no necesita lanzar excepciones.
+
+### 2. Eliminación de walk() de Animal
+
+**Antes:** `Animal` tenía un método `walk()` por defecto.
+
+**Después:** `Animal` solo contiene el comportamiento común a todos los animales (`makeSound()`).
+
+**Mejora:** La clase base ahora representa correctamente el denominador común de todos los animales.
+
+### 3. Implementación de IWalkingAnimal en Dog
+
+**Antes:** `Dog` heredaba `walk()` de `Animal` sin problemas, pero la jerarquía era incorrecta.
+
+**Después:** `Dog` implementa `IWalkingAnimal` explícitamente:
+
+```java
+public class Dog extends Animal implements IWalkingAnimal {
+  @Override
+  public void walk() {
+    System.out.println("Dog walks.");
+  }
+}
+```
+
+**Mejora:** `Dog` puede ser substituido por `IWalkingAnimal` sin problemas.
+
+### 4. Simplificación de Fish
+
+**Antes:** `Fish` lanzaba `UnsupportedOperationException` en `walk()`.
+
+**Después:** `Fish` simplemente extiende `Animal` sin sobrescribir ningún método:
+
+```java
+public class Fish extends Animal {
+}
+```
+
+**Mejora:** `Fish` ya no viola el principio. No necesita proporcionar una implementación vacía o lanzar excepciones.
+
+## Principio Aplicado
+
+> Los objetos de una superclase deben poder ser substituidos por objetos de sus subclases sin afectar el comportamiento del programa.
+
+La refactorización cumple con LSP porque:
+- **Sustitución válida:** Un `Animal` puede ser cualquier subclase (`Dog` o `Fish`) sin que `walk()` lance excepciones
+- **Contrato respetado:** `IWalkingAnimal` define un contrato claro que solo las clases que pueden caminar implementan
+- **Sin excepciones en tiempo de ejecución:** Ya no hay `UnsupportedOperationException` cuando se llama `walk()` en un objeto esperado como `IWalkingAnimal`
+
+## Puntos de Mejora Fuera del Principio
+
+### 1. Uso de cast en Main.java
+
+**Código actual:**
+```java
+Animal dog = new Dog();
+dog.makeSound();
+((Dog) dog).walk();  // Cast necesario para llamar walk()
+```
+
+**Problema:** Si `dog` está declarado como `Animal`, se necesita un cast para acceder a `walk()`. Esto indica que la declaración de tipo no refleja completamente el comportamiento del objeto.
+
+**Mejora sugerida:** Usar la interfaz directamente cuando se necesite comportamiento específico:
+```java
+IWalkingAnimal dog = new Dog();
+dog.walk();
+```
+
+O mantener ambas referencias según el contexto:
+```java
+Animal dog = new Dog();
+dog.makeSound();
+
+IWalkingAnimal walkingDog = new Dog();
+walkingDog.walk();
+```
+
+### 2. Decisión de diseño sobre la referencia Animal
+
+La existencia de `Animal dog = new Dog()` y `Animal fish = new Fish()` en `Main.java` sugiere que se desea tratar a ambos polimórficamente. Sin embargo, si el objetivo es usar `walk()` en `Dog`, la referencia debería ser `IWalkingAnimal`. Se mantuvo este patrón deliberadamente para demostrar que:
+
+- **LSP se cumple:** Ambos pueden ser `Animal` sin violar el contrato de `makeSound()`
+- **El cast muestra la limitación:** Cuando se necesita comportamiento específico, la jerarquía actual requiere decidir entre flexibilidad (usar `Animal`) o tipo específico (usar `IWalkingAnimal`)
+
+### Nota sobre la Decisión de Diseño
+
+Esta implementación demuestra el principio LSP correctamente: cualquier subclase de `Animal` puede substituir a `Animal` sin romper el programa. Sin embargo, en un diseño real, si muchos animales necesitan comportamientos específicos como `walk()`, podría considerarse si `Animal` es la abstracción correcta o si debería definirse desde el inicio como una interfaz más granular.
