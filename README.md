@@ -518,3 +518,180 @@ phone.charge();
 ### Consideración de Diseño
 
 La existencia de `((Chargeable) phone).charge()` en `Main.java` demuestra que a veces se necesita trabajar con interfaces específicas. Si el código requiere frecuentemente cargar dispositivos, podría tener sentido que `Chargeable` sea la interfaz principal y `Device` solo un extra. Sin embargo, el diseño actual es válido para ISP y demuestra correctamente el principio.
+
+---
+
+# Refactorización Dependency Inversion Principle (DIP)
+
+## Problema Original
+
+El código original en `dip/original/PaymentProcessor.java` violaba el principio DIP al depender directamente de una implementación concreta:
+
+```java
+public class PaymentProcessor {
+  private CreditCardPayment payment;
+
+  public PaymentProcessor() {
+    this.payment = new CreditCardPayment();
+  }
+
+  public void makePayment(double amount) {
+    payment.processPayment(amount);
+  }
+}
+```
+
+**Problema:** `PaymentProcessor` depende directamente de `CreditCardPayment`. Si se quisiera usar otro método de pago (PayPal, Crypto), sería necesario modificar `PaymentProcessor`, violando el principio.
+
+## Estructura Refactorizada
+
+```
+dip/modified/
+  Main.java
+  PaymentMethod.java      # Interfaz que define el contrato
+  PaymentProcessor.java  # Depende de la abstracción
+  paymentMethods/
+    CreditCardPayment.java
+    PayPalPayment.java
+    CryptoPayment.java
+```
+
+## Cambios Realizados
+
+### 1. Creación de la Interfaz PaymentMethod
+
+**Antes:** `PaymentProcessor` dependía de la clase concreta `CreditCardPayment`.
+
+**Después:** Se creó una interfaz `PaymentMethod` que define el contrato:
+
+```java
+public interface PaymentMethod {
+  void processPayment(double amount);
+}
+```
+
+**Mejora:** Cualquier método de pago ahora puede implementar esta interfaz sin acoplar `PaymentProcessor` a una implementación específica.
+
+### 2. Modificación de PaymentProcessor para Depender de la Abstracción
+
+**Antes:**
+```java
+private CreditCardPayment payment;
+```
+
+**Después:**
+```java
+private PaymentMethod paymentMethod;
+```
+
+**Mejora:** `PaymentProcessor` ahora depende de una abstracción, no de una implementación concreta.
+
+### 3. Inyección de Dependencias via Constructor
+
+**Antes:**
+```java
+public PaymentProcessor() {
+  this.payment = new CreditCardPayment();
+}
+```
+
+**Después:**
+```java
+public PaymentProcessor(PaymentMethod paymentMethod) {
+  this.paymentMethod = paymentMethod;
+}
+```
+
+**Mejora:**
+- `PaymentProcessor` ya no crea sus dependencias, las recibe
+- Fácil de probar con mocks
+- Las dependencias son explícitas
+
+### 4. Extracción de Clases Concretas
+
+**Antes:** Solo existía `CreditCardPayment` y estaba acoplada a `PaymentProcessor`.
+
+**Después:** Cada método de pago es una clase independiente:
+
+```java
+public class CreditCardPayment implements PaymentMethod {
+  @Override
+  public void processPayment(double amount) {
+    System.out.println("Processing credit card payment of $" + amount);
+  }
+}
+
+public class PayPalPayment implements PaymentMethod {
+  @Override
+  public void processPayment(double amount) {
+    System.out.println("Processing PayPal payment of $" + amount);
+  }
+}
+
+public class CryptoPayment implements PaymentMethod {
+  @Override
+  public void processPayment(double amount) {
+    System.out.println("Processing crypto payment of $" + amount);
+  }
+}
+```
+
+**Mejora:** Cada clase tiene una única responsabilidad. Agregar un nuevo método de pago no requiere modificar los existentes ni `PaymentProcessor`.
+
+### 5. Actualización de Main.java
+
+**Antes:**
+```java
+PaymentProcessor processor = new PaymentProcessor();
+processor.makePayment(150.0);
+```
+
+**Después:**
+```java
+PaymentMethod creditCardPayment = new CreditCardPayment();
+PaymentProcessor creditCardProcessor = new PaymentProcessor(creditCardPayment);
+creditCardProcessor.makePayment(150.0);
+
+PaymentMethod payPalPayment = new PayPalPayment();
+PaymentProcessor payPalProcessor = new PaymentProcessor(payPalPayment);
+payPalProcessor.makePayment(300.0);
+```
+
+**Mejora:** El cliente decide qué implementación usar y la inyecta en `PaymentProcessor`.
+
+## Principio Aplicado
+
+> Las entidades de software deben depender de abstracciones, no de concreciones.
+
+La refactorización cumple con DIP porque:
+- **Módulo de alto nivel independientes:** `PaymentProcessor` no depende de concreciones
+- **Abstracciones correctas:** `PaymentMethod` define el contrato entre módulos
+- **Módulos de bajo nivel dependen de abstracciones:** `CreditCardPayment`, `PayPalPayment`, `CryptoPayment` implementan `PaymentMethod`
+
+## Puntos de Mejora Fuera del Principio
+
+### Instanciación en Main.java
+
+**Código actual:**
+```java
+PaymentMethod creditCardPayment = new CreditCardPayment();
+```
+
+**Problema:** `Main.java` todavía instancia las clases concretas directamente. En un diseño más avanzado, se podría usar un contenedor de inyección de dependencias o un Factory pattern para desacoplar completamente el código cliente de las implementaciones.
+
+**Mejora sugerida:** Usar un contenedor DI como Spring o Guice:
+```java
+public static void main(String[] args) {
+  PaymentProcessor processor = container.get(PaymentProcessor.class);
+  processor.makePayment(150.0);
+}
+```
+
+O un Factory simple:
+```java
+PaymentProcessor processor = PaymentProcessorFactory.create("creditcard");
+```
+
+### Consideración de Diseño
+
+La inyección de dependencias via constructor es correcta y demuestra el principio DIP. Sin embargo, en aplicaciones reales, el uso de un contenedor DI o framework (Spring, Guice, Dagger) facilita la gestión de dependencias en código a mayor escala.
