@@ -10,7 +10,7 @@ Los principios SOLID son un conjunto de cinco principios de diseño orientado a 
 
 Estos principios fueron popularizados por Robert C. Martin (Uncle Bob) y son fundamentales para escribir código de calidad en aplicaciones orientadas a objetos.
 
-> **Nota:** Este README fue generado con ayuda de IA, pero toda la refactorización del código fue completamente realizada por los estudiantes.
+> **Nota:** Este README fue generado con ayuda de IA, pero toda la refactorización del código y reflexión de cada principio fue completamente realizada por los estudiantes.
 
 ---
 
